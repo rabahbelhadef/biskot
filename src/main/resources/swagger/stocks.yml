@@ -1,0 +1,34 @@
+openapi: 3.0.0
+info:
+  title: STOCK API
+  description: .
+  version: 0.0.1
+paths:
+  /stock/{productId}:
+    get:
+      summary: Get the stock available for a product
+      parameters:
+        - name: productId
+          in: path
+          description: Product ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':    # status code
+          description: Product stock
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stock'
+
+components:
+  schemas:
+    Stock:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        quantity_available:
+          type: integer

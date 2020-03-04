@@ -1,0 +1,116 @@
+openapi: 3.0.0
+info:
+  title: BISKOT API
+  description: .
+  version: 0.0.1
+paths:
+  /cart:
+    post:
+      summary: Create a cart.
+      responses:
+        '204':    # status code
+          description: Cart initialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+  /products:
+    get:
+      summary: Retrieve the list of products
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+  /cart/{cartId}:
+    get:
+      summary: Retrieve a cart
+      parameters:
+        - name: cartId
+          in: path
+          description: Cart ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':    # status code
+          description: Cart retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '404':
+          description: Cart not found
+    post:
+      summary: Add products to a cart.
+      responses:
+        '202':    # status code
+          description: Product added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '404':
+          description: Cart not found
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/AddProduct'
+      parameters:
+        - name: cartId
+          in: path
+          description: Cart ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+components:
+  schemas:
+    Cart:
+      type: object
+      properties:
+        id:
+          type: integer
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        total_amount:
+          type: number
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        price:
+          $ref: '#/components/schemas/Money'
+        quantity:
+          type: integer
+        weight_in_kg:
+          type: number
+        label:
+          type: string
+    AddProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+        quantity:
+          type: integer
+    Money:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+
