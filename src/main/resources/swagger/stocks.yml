@@ -30,5 +30,6 @@ components:
       properties:
         product_id:
           type: integer
+          format: int64
         quantity_available:
           type: integer

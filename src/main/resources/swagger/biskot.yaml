@@ -80,17 +80,21 @@ components:
       properties:
         id:
           type: integer
+          format: int64
         products:
           type: array
           items:
-            $ref: '#/components/schemas/Product'
-        total_amount:
-          type: number
+            $ref: '#/components/schemas/AddProduct'
+        total_price:
+          $ref: '#/components/schemas/Money'
+        currency:
+          type: string
     Product:
       type: object
       properties:
         id:
           type: integer
+          format: int64
         price:
           $ref: '#/components/schemas/Money'
         quantity:
@@ -102,8 +106,9 @@ components:
     AddProduct:
       type: object
       properties:
-        id:
+        product_id:
           type: integer
+          format: int64
         quantity:
           type: integer
     Money:
@@ -113,4 +118,3 @@ components:
           type: number
         currency:
           type: string
-
