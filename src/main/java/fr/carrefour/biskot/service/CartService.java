@@ -1,12 +1,14 @@
 package fr.carrefour.biskot.service;
 
-import fr.carrefour.biskot.BusinessException;
 import fr.carrefour.biskot.cache.CartCache;
 import fr.carrefour.biskot.dto.*;
+import fr.carrefour.biskot.exception.BusinessException;
+import fr.carrefour.biskot.exception.DataNotFoundException;
 import fr.carrefour.biskot.feignclient.StockClient;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import static java.util.Optional.ofNullable;
 
 @Service
 public class CartService {
@@ -26,11 +28,12 @@ public class CartService {
 
 
     public Cart intCarte(Cart cart){
-        return cartCache.saveCart(cart) ;
+        return cartCache.initCart(cart) ;
     }
 
     public Cart getCartById(Long cartId) {
-        return cartCache.getCart(cartId);
+        return ofNullable(cartCache.getCart(cartId))
+                .orElseThrow(() -> new DataNotFoundException("Panier non trouvé"));
     }
 
     public Cart addToCart(AddProduct addProduct, Long cartId){

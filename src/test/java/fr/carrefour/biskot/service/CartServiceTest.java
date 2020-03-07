@@ -1,8 +1,9 @@
 package fr.carrefour.biskot.service;
 
-import fr.carrefour.biskot.BusinessException;
+import fr.carrefour.biskot.exception.BusinessException;
 import fr.carrefour.biskot.cache.CartCache;
 import fr.carrefour.biskot.dto.*;
+import fr.carrefour.biskot.exception.DataNotFoundException;
 import fr.carrefour.biskot.feignclient.StockClient;
 import fr.carrefour.biskot.test.utils.TestResult;
 import org.junit.jupiter.api.Test;
@@ -148,6 +149,27 @@ class CartServiceTest {
 
         verify(cartCache).getCart(cartId);
         verify(productService, never()).getProductById(productId);
+        verify(stockClient, never()).getStock(anyLong());
+    }
+
+    @Test
+    public void should_throw_data_not_found_exception_when_cart_not_found(){
+        // Given
+        Long cartId = 1L;
+        Long productId = 10L ;
+
+        when(cartCache.getCart(cartId)).thenReturn(null) ;
+
+        // When
+        final TestResult<Cart> cartResult = tryToExecute(() -> cartService.addToCart(new AddProduct(productId, 1), cartId));
+
+        // then
+        assertThat(cartResult.getExceptionType()).isAssignableFrom(DataNotFoundException.class) ;
+        assertThat(cartResult.getMessage()).isEqualTo("Panier non trouvé") ;
+
+        verify(cartCache).getCart(cartId);
+        verify(cartCache, never()).saveCart(Mockito.any(Cart.class)) ;
+        verify(productService, never()).getProductById(anyLong());
         verify(stockClient, never()).getStock(anyLong());
     }
 
