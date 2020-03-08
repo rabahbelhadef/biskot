@@ -1,34 +1,41 @@
 package fr.carrefour.biskot.service;
 
 import fr.carrefour.biskot.cache.CartCache;
-import fr.carrefour.biskot.dto.*;
+import fr.carrefour.biskot.dto.AddProduct;
+import fr.carrefour.biskot.dto.Cart;
+import fr.carrefour.biskot.dto.Money;
+import fr.carrefour.biskot.dto.Product;
 import fr.carrefour.biskot.exception.BusinessException;
 import fr.carrefour.biskot.exception.DataNotFoundException;
 import fr.carrefour.biskot.feignclient.StockClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static fr.carrefour.biskot.dto.Currency.EURO;
 import static java.util.Optional.ofNullable;
 
 @Service
 public class CartService {
 
     @Autowired
-    private ProductService productService ;
+    private ProductService productService;
 
     @Autowired
-    private CartCache cartCache ;
+    private CartCache cartCache;
 
     @Autowired
-    private StockClient stockClient ;
+    private StockClient stockClient;
 
-    private Integer maxCartAount  = 100;
+    private Integer maxCartAount = 100;
 
     final int maxProductNumber = 5;
 
 
-    public Cart intCarte(Cart cart){
-        return cartCache.initCart(cart) ;
+    public Cart intCarte(Cart cart) {
+        return cartCache.initCart(cart);
     }
 
     public Cart getCartById(Long cartId) {
@@ -36,35 +43,41 @@ public class CartService {
                 .orElseThrow(() -> new DataNotFoundException("Panier non trouvé"));
     }
 
-    public Cart addToCart(AddProduct addProduct, Long cartId){
-        Cart cart = getCartById(cartId) ;
-        validateCartAndAppendProduct(cart, addProduct) ;
-        return cartCache.saveCart(cart) ;
+    public Cart addToCart(AddProduct addProduct, Long cartId) {
+        Cart cart = getCartById(cartId);
+        Cart cartToSave = validateCartAndAppendProduct(cart, addProduct);
+
+        return cartCache.saveCart(cartToSave);
     }
 
-    private void validateCartAndAppendProduct(final Cart cart, AddProduct addProduct) {
+    private Cart validateCartAndAppendProduct(final Cart cart, AddProduct addProduct) {
         validateTotalPrice(cart);
-        validateProductNumber(cart);
-        validateAddProductweight(cart, addProduct);
+        validateProductNumber(cart, addProduct.getProductId());
+        return validateAddProductweight(cart, addProduct);
     }
 
 
-    private void validateAddProductweight(Cart cart, AddProduct addProduct) {
+    private Cart validateAddProductweight(Cart cart, AddProduct addProduct) {
 
         Product product = productService.getProductById(addProduct.getProductId());
 
-        validateProductWeight(addProduct, product);
+        AddProduct updatetedAddProduct = getUpdateAddProduct(cart, addProduct);
+        validateProductWeight(updatetedAddProduct, product);
 
-        appendProducAddReprocessPrice(cart, addProduct, product);
+        Cart cartToSave = appendProducAddReprocessPrice(cart, updatetedAddProduct, product.getPrice().getAmount(), addProduct.getQuantity());
 
-        validateTotalPrice(cart);
+        validateTotalPrice(cartToSave);
 
         validateQuantityAvailable(addProduct, product);
 
+        return cartToSave;
+
+
     }
 
-    private void validateProductNumber(Cart cart) {
-        if (cart.getProducts().size()  >= maxProductNumber) {
+    private void validateProductNumber(Cart cart, Long productId) {
+        boolean newProductToAdd = cart.getProducts().stream().map(AddProduct::getProductId).noneMatch(productId::equals);
+        if (newProductToAdd && cart.getProducts().size() >= maxProductNumber) {
             throw new BusinessException("Le panier ne peut pas contenir plus de %s produits", maxProductNumber);
         }
     }
@@ -75,16 +88,40 @@ public class CartService {
         }
     }
 
-    private void appendProducAddReprocessPrice(Cart cart, AddProduct addProduct, Product product) {
-        float newPrice = cart.getTotalPrice().getAmount() +  addProduct.getQuantity() * product.getPrice().getAmount();
-        cart.setTotalPrice(new Money(newPrice, Currency.EURO));
-        cart.getProducts().add(addProduct) ;
+    private Cart appendProducAddReprocessPrice(Cart cart, AddProduct updatedAddProduct, Float productPrice, Integer quantityToAdd) {
+
+        float newPrice = cart.getTotalPrice().getAmount() + quantityToAdd * productPrice;
+        cart.setTotalPrice(new Money(newPrice, EURO));
+        final List<AddProduct> newProducts = new ArrayList<>();
+        for (int i = 0; i < cart.getProducts().size(); i++) {
+            AddProduct p = cart.getProducts().get(i);
+            if (p.getProductId().equals(updatedAddProduct.getProductId())) {
+                newProducts.add(updatedAddProduct);
+            } else {
+                newProducts.add(p);
+            }
+        }
+
+        cart.getProducts().add(updatedAddProduct);
+        Cart cartToSave = Cart.builder()
+                .id(cart.getId())
+                .products(newProducts)
+                .totalPrice(new Money(newPrice, EURO))
+                .build();
+        return cartToSave;
     }
 
-    private void validateProductWeight(AddProduct addProduct, Product product) {
-        if (addProduct.getQuantity() * product.getWeightInKg() > 3) {
+    private void validateProductWeight(AddProduct updateAddProduct, Product product) {
+        if (updateAddProduct.getQuantity() * product.getWeightInKg() > 3) {
             throw new BusinessException("Le poids pour chaque produit dans le panier ne doit pas excéder 3 kg");
         }
+    }
+
+    private AddProduct getUpdateAddProduct(Cart cart, AddProduct addProduct) {
+        return cart.getProducts().stream().filter(p -> p.getProductId()
+                .equals(addProduct.getProductId()))
+                .map(p -> new AddProduct(p.getProductId(), p.getQuantity() + addProduct.getQuantity()))
+                .findFirst().orElse(addProduct);
     }
 
     private void validateQuantityAvailable(AddProduct addProduct, Product product) {

@@ -7,13 +7,12 @@ import fr.carrefour.biskot.exception.DataNotFoundException;
 import fr.carrefour.biskot.feignclient.StockClient;
 import fr.carrefour.biskot.test.utils.TestResult;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
+import org.mockito.*;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
 import static fr.carrefour.biskot.dto.Currency.EURO;
@@ -65,6 +64,39 @@ class CartServiceTest {
         verify(cartCache).getCart(cartId);
         verify(cartCache).saveCart(Mockito.any(Cart.class)) ;
 
+        verify(productService).getProductById(productId);
+        verify(stockClient).getStock(productId);
+    }
+
+
+    @Test
+    public void should_add_product_several_times(){
+        // Given
+        Long cartId = 1L;
+        Long productId = 10L ;
+        List<AddProduct> products = new ArrayList<>();
+        products.add(new AddProduct(productId, 1));
+        Cart initialCart = Cart.builder()
+                .totalPrice(new Money(0f, EURO))
+                .products(products)
+                .build();
+
+        when(cartCache.getCart(cartId)).thenReturn(initialCart) ;
+        when(currenceyConverter.getLocalCurrency()).thenReturn(EURO) ;
+
+        when(productService.getProductById(productId)).thenReturn(Product.builder().id(productId).weightInKg(0.5f).price(new Money(1f, EURO)).build()) ;
+        when(stockClient.getStock(productId)).thenReturn(Stock.builder().productId(productId).quantityAvailable(5).build()) ;
+        //When
+
+        cartService.addToCart(new AddProduct(productId, 1), cartId) ;
+
+
+        // then
+        verify(cartCache).getCart(cartId);
+        ArgumentCaptor<Cart> captor = ArgumentCaptor.forClass(Cart.class);
+        verify(cartCache).saveCart(captor.capture()) ;
+        assertThat(captor.getValue().getProducts()).hasSize(1) ;
+        assertThat(captor.getValue().getProducts().get(0).getQuantity()).isEqualTo(2) ;
         verify(productService).getProductById(productId);
         verify(stockClient).getStock(productId);
     }
