@@ -30,7 +30,7 @@ public class RestExceptionHundler {
         return ResponseEntity.badRequest().header("error_message" , exception.getMessage()).build() ;
     }
 
-    @ExceptionHandler(value = IllegalArgumentException.class)
+    @ExceptionHandler(value = Exception.class)
     public ResponseEntity<String> othersException(Exception exception) {
         log.error(exception.getMessage(), exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build() ;
