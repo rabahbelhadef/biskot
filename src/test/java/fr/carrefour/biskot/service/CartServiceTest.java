@@ -1,8 +1,8 @@
 package fr.carrefour.biskot.service;
 
-import fr.carrefour.biskot.exception.BusinessException;
 import fr.carrefour.biskot.cache.CartCache;
 import fr.carrefour.biskot.dto.*;
+import fr.carrefour.biskot.exception.BusinessException;
 import fr.carrefour.biskot.exception.DataNotFoundException;
 import fr.carrefour.biskot.feignclient.StockClient;
 import fr.carrefour.biskot.test.utils.TestResult;
@@ -12,7 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
 import static fr.carrefour.biskot.dto.Currency.EURO;
@@ -102,6 +101,32 @@ class CartServiceTest {
     }
 
     @Test
+    public void should_throwIllegalArgumentException_when_cart_id_is_missing(){
+        should_throwIllegalArgumentException(null, 1L, "Identifiant du panier est obligatoire");
+
+    }
+
+    @Test
+    public void should_throwIllegalArgumentException_when_product_id_is_missing(){
+        should_throwIllegalArgumentException(1L, null, "Produit à rajouter dans le panier est obligatoire");
+    }
+
+
+    private void should_throwIllegalArgumentException(Long cartId, Long productId, String message) {
+        final TestResult<Cart> cartResult = tryToExecute(() -> cartService.addToCart(new AddProduct(productId, 1), cartId));
+
+        // then
+        assertThat(cartResult.getExceptionType()).isAssignableFrom(IllegalArgumentException.class);
+        assertThat(cartResult.getMessage()).isEqualTo(message);
+
+        verify(cartCache, never()).getCart(cartId);
+        verify(cartCache, never()).saveCart(Mockito.any(Cart.class));
+        verify(productService, never()).getProductById(anyLong());
+        verify(stockClient, never()).getStock(anyLong());
+    }
+
+
+    @Test
     void should_not_add_product_to_cart_when_initiat_total_price_egale_100_euros() {
         // Given
         Long cartId = 1L;
@@ -152,7 +177,6 @@ class CartServiceTest {
         verify(productService).getProductById(productId);
         verify(stockClient, never()).getStock(anyLong());
     }
-
 
 
     @Test

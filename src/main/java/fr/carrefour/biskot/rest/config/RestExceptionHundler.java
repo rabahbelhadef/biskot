@@ -18,4 +18,9 @@ public class RestExceptionHundler {
     public ResponseEntity<String> businessException(BusinessException exception) {
         return ResponseEntity.badRequest().header("error_message" , exception.getMessage()).build() ;
     }
+
+    @ExceptionHandler(value = IllegalArgumentException.class)
+    public ResponseEntity<String> businessIllegalArgumentException(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest().header("error_message" , exception.getMessage()).build() ;
+    }
 }

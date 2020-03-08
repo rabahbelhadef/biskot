@@ -10,6 +10,7 @@ import fr.carrefour.biskot.exception.DataNotFoundException;
 import fr.carrefour.biskot.feignclient.StockClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +45,9 @@ public class CartService {
     }
 
     public Cart addToCart(AddProduct addProduct, Long cartId) {
+        Assert.notNull(addProduct.getProductId(), "Produit à rajouter dans le panier est obligatoire");
+        Assert.notNull(cartId, "Identifiant du panier est obligatoire");
+
         Cart cart = getCartById(cartId);
         Cart cartToSave = validateCartAndAppendProduct(cart, addProduct);
 
@@ -51,6 +55,7 @@ public class CartService {
     }
 
     private Cart validateCartAndAppendProduct(final Cart cart, AddProduct addProduct) {
+
         validateTotalPrice(cart);
         validateProductNumber(cart, addProduct.getProductId());
         return validateAddProductweight(cart, addProduct);
@@ -103,12 +108,11 @@ public class CartService {
         }
 
         cart.getProducts().add(updatedAddProduct);
-        Cart cartToSave = Cart.builder()
+        return Cart.builder()
                 .id(cart.getId())
                 .products(newProducts)
                 .totalPrice(new Money(newPrice, EURO))
                 .build();
-        return cartToSave;
     }
 
     private void validateProductWeight(AddProduct updateAddProduct, Product product) {
